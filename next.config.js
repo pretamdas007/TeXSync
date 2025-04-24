@@ -5,11 +5,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: { unoptimized: true },
-  experimental: {
-    fontLoaders: [
-      { loader: '@next/font/google', options: { subsets: ['latin'] } }
-    ],
-  },
+  // Removed deprecated fontLoaders experimental option
   // Increase timeout for font loading
   staticPageGenerationTimeout: 120,
 };

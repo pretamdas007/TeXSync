@@ -1,0 +1,7 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+  environment = { NEXT_PRIVATE_TARGET = "server" }
+
+[[plugins]]
+  package = "@netlify/next"
