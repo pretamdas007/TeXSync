@@ -16,6 +16,9 @@ export default function ConvertPage() {
             <Button variant="ghost" asChild>
               <Link href="/">Home</Link>
             </Button>
+            <Link href="/convert" className="hover:text-primary transition-colors">
+              Document Converter
+            </Link>
           </div>
         </div>
       </header>

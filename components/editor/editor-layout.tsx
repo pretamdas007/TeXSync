@@ -5,7 +5,7 @@ import { Logo } from "@/components/common/logo";
 import { Button } from "@/components/ui/button";
 import { 
   Save, FileSymlink, Download, Settings, User, 
-  ChevronLeft, ChevronRight, Share2 
+  ChevronLeft, ChevronRight, Share2, HomeIcon 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -13,6 +13,7 @@ import {
   ResizablePanel, 
   ResizablePanelGroup 
 } from "@/components/ui/resizable";
+import Link from 'next/link';
 
 interface EditorLayoutProps {
   children: React.ReactNode;
