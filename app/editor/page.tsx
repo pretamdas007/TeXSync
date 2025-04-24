@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { LaTeXEditor } from "@/components/editor/latex-editor";
 
 const initialLatex = `\\documentclass{article}
 \\usepackage{amsmath}
@@ -45,27 +46,6 @@ $$E = mc^2$$
 Concluding remarks go here.
 
 \\end{document}`;
-
-export function LaTeXEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const editorRef = useRef<HTMLTextAreaElement>(null);
-  
-  // Keep the textarea in sync with the value prop
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.value !== value) {
-      editorRef.current.value = value;
-    }
-  }, [value]);
-  
-  return (
-    <textarea
-      ref={editorRef}
-      className="w-full h-full resize-none font-mono bg-gray-900 text-gray-100 p-4 outline-none border-none"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      spellCheck={false}
-    />
-  );
-}
 
 export default function EditorPage() {
   const [latex, setLatex] = useState(initialLatex);
