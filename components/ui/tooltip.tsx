@@ -27,4 +27,16 @@ const TooltipContent = React.forwardRef<
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
+// Add this component to your UI
+const EngineHelp = () => (
+  <div className="p-4 bg-gray-100 rounded-md text-sm mt-2">
+    <h4 className="font-bold">Compiler options:</h4>
+    <ul className="list-disc pl-5 space-y-1 mt-2">
+      <li><strong>pdfLaTeX</strong>: Standard engine for most documents</li>
+      <li><strong>XeLaTeX</strong>: Better for custom fonts and multilingual documents</li>
+      <li><strong>LuaLaTeX</strong>: Advanced features for complex documents and programming</li>
+    </ul>
+  </div>
+);
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, EngineHelp };

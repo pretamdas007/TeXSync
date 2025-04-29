@@ -102,7 +102,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         {/* Page loading progress indicator */}
         <NextTopLoader 
           color="#dc2626"

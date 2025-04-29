@@ -1,0 +1,46 @@
+FROM node:18.18.0-slim
+
+# Install TeX Live with comprehensive packages
+RUN apt-get update && apt-get install -y \
+    texlive-latex-base \
+    texlive-fonts-recommended \
+    texlive-latex-extra \
+    texlive-pictures \
+    texlive-science \
+    texlive-xetex \
+    texlive-luatex \
+    texlive-lang-english \
+    texlive-plain-generic \
+    texlive-physics \       
+    texlive-generic-extra \  
+    texlive-electrical \     
+    curl \
+    wget \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify LaTeX engines are installed
+RUN pdflatex --version && \
+    xelatex --version && \
+    echo "LaTeX engines successfully installed"
+
+WORKDIR /app
+
+COPY server/package*.json ./
+RUN npm install
+
+# Create temp directory with proper permissions
+RUN mkdir -p /app/temp && chmod 777 /app/temp
+
+COPY server/ ./
+
+# Expose the port
+EXPOSE 5000
+
+# Add a simple test to verify engines at runtime
+RUN echo '\\documentclass{article}\\begin{document}Hello\\end{document}' > test.tex && \
+    pdflatex -interaction=nonstopmode -output-directory=/app/temp test.tex && \
+    xelatex -interaction=nonstopmode -output-directory=/app/temp test.tex && \
+    echo "LaTeX compilation test successful"
+
+CMD ["npm", "start"]

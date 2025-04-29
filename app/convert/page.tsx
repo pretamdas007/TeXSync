@@ -1,9 +1,42 @@
+"use client";
+
 import { DocumentConverter } from "@/components/converter/document-converter";
 import { Logo } from "@/components/common/logo";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function ConvertPage() {
+  const [isConverting, setIsConverting] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [convertedContent, setConvertedContent] = useState("");
+
+  const handleConversion = async () => {
+    if (!file) return;
+    
+    setIsConverting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', file.type);
+      
+      const response = await fetch('/api/convert', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      
+      setConvertedContent(data.latex);
+      // Rest of your success handling
+    } catch (error) {
+      // Error handling
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-gray-800 bg-background">
