@@ -200,7 +200,7 @@ export default function EditorPage() {
   // Set XeLaTeX as default for better Unicode support with the heart symbol
   const [latexEngine, setLatexEngine] = useState<'pdflatex' | 'xelatex' | 'lualatex'>('xelatex');
   // Get backend URL from environment variable (for Vercel/Render deployment)
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://texsync.onrender.com";
 
   // Initialize Gemini AI (ideally, the API key should be stored securely in env variables)
   const API_KEY = "AIzaSyAwNXtukA3f2QOa2YIGimEuBqXA8dC9V8w";
