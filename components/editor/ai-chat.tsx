@@ -1020,10 +1020,9 @@ export function AIChat({ latex, onInsertCode, isMinimized, onToggleMinimize }: A
           const confidence = event.results[i][0].confidence;
           setVoiceConfidence(confidence);
           setRecognizedCommand(transcript);
-          
-          // Process the transcript for commands
+            // Process the transcript for commands
           let commandFound = false;
-          let bestMatchCommand = null;
+          let bestMatchCommand: any = null;
           let bestMatchScore = 0.6; // Threshold for command matching
           
           // Advanced command matching logic
