@@ -199,6 +199,8 @@ export default function EditorPage() {
   // Add this to your state variables
   // Set XeLaTeX as default for better Unicode support with the heart symbol
   const [latexEngine, setLatexEngine] = useState<'pdflatex' | 'xelatex' | 'lualatex'>('xelatex');
+  // Get backend URL from environment variable (for Vercel/Render deployment)
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
   // Initialize Gemini AI (ideally, the API key should be stored securely in env variables)
   const API_KEY = "AIzaSyAwNXtukA3f2QOa2YIGimEuBqXA8dC9V8w";
@@ -233,13 +235,12 @@ export default function EditorPage() {
       };
     }
   };
-
   // Update the compilePdf function to include the engine
   const compilePdf = async () => {
     setIsCompiling(true);
     try {
       // Send the LaTeX content to the backend for compilation
-      const response = await fetch("http://localhost:5000/api/compile", {
+      const response = await fetch(`${BACKEND_URL}/api/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -14,7 +14,14 @@ if (!fs.existsSync(tempDir)) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://texsync.vercel.app',  // Replace with your actual Vercel URL
+    /\.vercel\.app$/  // Allow all Vercel preview URLs
+  ],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'temp')));
 
