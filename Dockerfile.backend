@@ -11,9 +11,7 @@ RUN apt-get update && apt-get install -y \
     texlive-luatex \
     texlive-lang-english \
     texlive-plain-generic \
-    texlive-physics \       
-    texlive-generic-extra \  
-    texlive-electrical \     
+    texlive-fonts-extra \
     curl \
     wget \
     && apt-get clean \
@@ -26,21 +24,33 @@ RUN pdflatex --version && \
 
 WORKDIR /app
 
+# Copy package files and install dependencies
 COPY server/package*.json ./
-RUN npm install
+RUN npm ci --only=production
 
 # Create temp directory with proper permissions
 RUN mkdir -p /app/temp && chmod 777 /app/temp
 
+# Copy server source code
 COPY server/ ./
-
-# Expose the port
-EXPOSE 5000
 
 # Add a simple test to verify engines at runtime
 RUN echo '\\documentclass{article}\\begin{document}Hello\\end{document}' > test.tex && \
     pdflatex -interaction=nonstopmode -output-directory=/app/temp test.tex && \
     xelatex -interaction=nonstopmode -output-directory=/app/temp test.tex && \
-    echo "LaTeX compilation test successful"
+    echo "LaTeX compilation test successful" && \
+    rm -f test.tex /app/temp/test.*
+
+# Create a non-root user for security
+RUN groupadd -r texsync && useradd -r -g texsync texsync
+RUN chown -R texsync:texsync /app
+USER texsync
+
+# Expose the port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/health || exit 1
 
 CMD ["npm", "start"]

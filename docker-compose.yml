@@ -1,7 +1,24 @@
-version: '3'
-
 services:
-  backend:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: texsync
+      POSTGRES_USER: texsync
+      POSTGRES_PASSWORD: texsync_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U texsync -d texsync"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # LaTeX Backend Service
+  latex-backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -10,13 +27,31 @@ services:
     volumes:
       - ./server:/app
       - /app/node_modules
-  
+    depends_on:
+      - database
+    environment:
+      - NODE_ENV=production
+
+  # Next.js Frontend with Authentication
   frontend:
-    image: node:18
-    working_dir: /app
-    command: npm run dev
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
       - "3000:3000"
+    depends_on:
+      - database
+      - latex-backend
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://texsync:texsync_password@database:5432/texsync
+      - JWT_SECRET=TeXSync_supersecret_key_for_authentication
+      - NEXTAUTH_SECRET=TeXSync_nextauth_secret_key
+      - NEXTAUTH_URL=http://localhost:3000
+      - BACKEND_URL=http://latex-backend:5000
     volumes:
-      - .:/app
-      - /app/node_modules
+      - ./.next:/app/.next
+      - ./prisma:/app/prisma
+
+volumes:
+  postgres_data:

@@ -1,9 +1,25 @@
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 import mammoth from "mammoth";
 
-// Initialize the Gemini API client with safety settings
-const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+// Initialize the Gemini API client with direct API key
+// WARNING: Using direct API keys is only recommended for testing purposes 
+// In production, use environment variables instead
+const API_KEY = "AIzaSyAwNXtukA3f2QOa2YIGimEuBqXA8dC9V8w"; // Replace with your actual Gemini API key
 const genAI = new GoogleGenerativeAI(API_KEY);
+
+// Validate API key
+export async function validateApiKey(): Promise<boolean> {
+  if (!API_KEY || !genAI) return false;
+  
+  try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    await model.generateContent("API key validation test");
+    return true;
+  } catch (error) {
+    console.error("Gemini API key validation failed:", error);
+    return false;
+  }
+}
 
 // Configure safety settings
 const safetySettings = [
@@ -31,6 +47,11 @@ const RETRY_DELAY = 1000; // ms
 
 export async function convertToLatex(file: File): Promise<string> {
   try {
+    // Validate API key before proceeding
+    if (!API_KEY || !genAI) {
+      throw new Error("API key is missing or invalid. Please check your environment configuration.");
+    }
+    
     // For text-based conversion from DOCX content
     if (file.name.toLowerCase().endsWith('.docx')) {
       const text = await extractTextFromDocx(file);
@@ -55,6 +76,8 @@ export async function convertToLatex(file: File): Promise<string> {
         throw new Error("API quota exceeded. Please try again later.");
       } else if (error.message.includes("network")) {
         throw new Error("Network error. Please check your internet connection and try again.");
+      } else if (error.message.includes("unregistered callers")) {
+        throw new Error("API key authentication failed. Please ensure you have registered your API key correctly.");
       }
       throw error;
     }
@@ -64,6 +87,10 @@ export async function convertToLatex(file: File): Promise<string> {
 
 // Convert text content to LaTeX using Gemini with retry mechanism
 async function generateLatexFromText(content: string, filename: string): Promise<string> {
+  if (!genAI) {
+    throw new Error("Gemini API client not initialized. Check your API key.");
+  }
+
   const model = genAI.getGenerativeModel({ 
     model: "gemini-pro",
     safetySettings,
@@ -97,31 +124,70 @@ Return ONLY the LaTeX code with no explanations or markdown formatting.
 
   // Implement retry mechanism
   let attempts = 0;
+  let lastError;
+  
   while (attempts < MAX_RETRIES) {
     try {
       const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       return response.text();
     } catch (error) {
+      console.error(`Attempt ${attempts + 1} failed:`, error);
+      lastError = error;
       attempts++;
-      if (attempts >= MAX_RETRIES) {
-        throw error;
+      
+      if (attempts < MAX_RETRIES) {
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempts));
       }
-      console.log(`Attempt ${attempts} failed, retrying in ${RETRY_DELAY}ms...`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
     }
   }
   
-  throw new Error("Failed to convert document after multiple attempts");
+  // If all retries fail
+  throw lastError || new Error("Failed to generate LaTeX after multiple attempts");
 }
 
-// Convert PDF using vision capabilities with improved prompt
+// Extract text from DOCX files
+async function extractTextFromDocx(file: File): Promise<string> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  } catch (error) {
+    console.error("Error extracting text from DOCX:", error);
+    throw new Error("Failed to extract text from the DOCX file. The file may be corrupted.");
+  }
+}
+
+// Convert PDF file to base64 for vision model
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const base64String = reader.result as string;
+      // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+      const base64Content = base64String.split(',')[1];
+      resolve(base64Content);
+    };
+    reader.onerror = (error) => {
+      reject(error);
+    };
+  });
+}
+
+// Generate LaTeX from PDF using vision model
 async function generateLatexFromPdf(base64Data: string, filename: string): Promise<string> {
+  if (!genAI) {
+    throw new Error("Gemini API client not initialized. Check your API key.");
+  }
+
+  // Use Gemini Pro Vision model
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-pro-vision",
+    model: "gemini-pro-vision", 
     safetySettings,
     generationConfig: {
-      temperature: 0.2, // Lower temperature for more consistent outputs
+      temperature: 0.2,
       topP: 0.8,
       topK: 40,
       maxOutputTokens: 8192,
@@ -129,132 +195,49 @@ async function generateLatexFromPdf(base64Data: string, filename: string): Promi
   });
   
   const prompt = `
-You are a LaTeX expert. Convert this PDF document to LaTeX code.
+You are a LaTeX expert. Convert this PDF document to proper LaTeX format.
 
-INSTRUCTIONS:
-1. Extract all text content, preserving the document structure and formatting
-2. Create a well-structured LaTeX document with appropriate document class and packages
-3. Maintain proper sections, subsections, and other organizational elements
-4. Convert all mathematical equations and formulas to proper LaTeX math notation
-5. Recreate tables using appropriate LaTeX table environments
-6. Add placeholders for images using \\includegraphics
-7. Format citations and references properly
-8. Preserve all formatting like bold, italic, lists, etc.
-9. Follow best practices for academic LaTeX documents
-10. Original filename: ${filename}
+Analyze the PDF content and create a structured LaTeX document that can reproduce the same output. 
+Pay special attention to:
+1. Document structure (titles, sections, subsections)
+2. Mathematical formulas and equations
+3. Tables and figures
+4. Reference formatting
+5. Original filename: ${filename}
 
-Return ONLY the complete LaTeX code with no explanations or markdown formatting.
+Return ONLY the LaTeX code with no explanations.
 `;
 
-  const imageParts = [
-    {
-      inlineData: {
-        data: base64Data,
-        mimeType: "application/pdf"
-      },
-    },
-  ];
-
-  // Implement retry mechanism for PDF conversion too
+  // Implement retry mechanism
   let attempts = 0;
+  let lastError;
+  
   while (attempts < MAX_RETRIES) {
     try {
-      const result = await model.generateContent([prompt, ...imageParts]);
-      const response = await result.response;
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: base64Data
+          }
+        }
+      ]);
+      
+      const response = result.response;
       return response.text();
     } catch (error) {
+      console.error(`Attempt ${attempts + 1} failed:`, error);
+      lastError = error;
       attempts++;
-      if (attempts >= MAX_RETRIES) {
-        throw error;
+      
+      if (attempts < MAX_RETRIES) {
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempts));
       }
-      console.log(`PDF conversion attempt ${attempts} failed, retrying in ${RETRY_DELAY}ms...`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
     }
   }
   
-  throw new Error("Failed to convert PDF after multiple attempts");
-}
-
-// Helper function to extract text from DOCX using mammoth.js
-async function extractTextFromDocx(file: File): Promise<string> {
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    
-    // Check if we got valid text content
-    if (result && result.value) {
-      return result.value;
-    }
-    
-    // Log warnings if any
-    if (result.messages && result.messages.length > 0) {
-      console.warn("DOCX extraction warnings:", result.messages);
-    }
-    
-    // If empty or failed
-    if (!result.value || result.value.trim() === '') {
-      throw new Error("Could not extract text content from the document");
-    }
-    
-    return result.value;
-  } catch (error) {
-    console.error("Error extracting text from DOCX:", error);
-    throw new Error("Failed to read the DOCX file. The file may be corrupted or password-protected.");
-  }
-}
-
-// Convert File to base64 with better error handling
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // Check file size first
-    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB limit
-    if (file.size > MAX_FILE_SIZE) {
-      reject(new Error(`File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds the maximum allowed size of 20MB.`));
-      return;
-    }
-    
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
-        const base64 = reader.result.split(',')[1];
-        resolve(base64);
-      } else {
-        reject(new Error("Failed to convert file to base64 format"));
-      }
-    };
-    
-    reader.onerror = (error) => {
-      console.error("FileReader error:", error);
-      reject(new Error("Error reading the file. The file may be corrupted."));
-    };
-    
-    // Add timeout for large files
-    const timeout = setTimeout(() => {
-      reader.abort();
-      reject(new Error("File reading timed out. The file may be too large or your browser is unresponsive."));
-    }, 30000); // 30 seconds timeout
-    
-    reader.onloadend = () => {
-      clearTimeout(timeout);
-    };
-  });
-}
-
-// Add function to check the API key validity before conversion
-export async function validateApiKey(): Promise<boolean> {
-  if (!API_KEY) {
-    return false;
-  }
-  
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    await model.generateContent("Test");
-    return true;
-  } catch (error) {
-    console.error("API key validation failed:", error);
-    return false;
-  }
+  // If all retries fail
+  throw lastError || new Error("Failed to generate LaTeX from PDF after multiple attempts");
 }

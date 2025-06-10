@@ -201,12 +201,16 @@ export default function EditorPage() {
   const [latexEngine, setLatexEngine] = useState<'pdflatex' | 'xelatex' | 'lualatex'>('xelatex');
 
   // Initialize Gemini AI (ideally, the API key should be stored securely in env variables)
-  const genAI = new GoogleGenerativeAI("AIzaSyAS7mnSqmz_bi5sI4gAtDIVc0PYJhB9FRg");
+  const API_KEY = "AIzaSyAwNXtukA3f2QOa2YIGimEuBqXA8dC9V8w";
+  const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
   
   // Add this function for Gemini integration
   const generateLatexWithGemini = async (prompt: string) => {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      if (!genAI) {
+        throw new Error("Gemini AI is not initialized. Please check your API key configuration.");
+      }
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       
       // Prepare the prompt with context for better LaTeX generation
       const fullPrompt = `You are a LaTeX expert. Generate LaTeX code for the following request. 
@@ -319,25 +323,25 @@ const downloadPdf = () => {
     setIsGenerating(true);
     
     try {
-      // Use Gemini instead of local endpoint
-      const data = await generateLatexWithGemini(aiPrompt);
+      // Use direct Gemini integration instead of API route
+      const result = await generateLatexWithGemini(aiPrompt);
       
-      if (data.success) {
-        setLatex(prevLatex => `${prevLatex}\n\n${data.latex}`);
+      if (result.success) {
+        setLatex(prevLatex => `${prevLatex}\n\n${result.latex}`);
         setAiPrompt("");
         
         toast({
-          title: "LaTeX generated with Gemini",
+          title: "LaTeX generated",
           description: "AI-generated content has been added to your document.",
         });
       } else {
-        throw new Error(data.error || "Unknown error");
+        throw new Error(result.error || "Unknown error");
       }
     } catch (error) {
       console.error("API error:", error);
       toast({
         title: "Generation failed",
-        description: "There was an error processing your request with Gemini.",
+        description: "There was an error processing your request with the AI service.",
         variant: "destructive",
       });
     } finally {

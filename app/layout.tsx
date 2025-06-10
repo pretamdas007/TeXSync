@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Analytics } from '@/components/analytics';
 import NextTopLoader from 'nextjs-toploader';
 import { Suspense } from 'react';
+import { AuthProvider } from '@/components/auth/auth-provider';
 
 // Load fonts
 const inter = Inter({ 
@@ -109,10 +110,11 @@ export default function RootLayout({
           showSpinner={false}
           shadow="0 0 10px #dc2626,0 0 5px #dc2626"
         />
-        
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          {children}
-          <Toaster />
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
         
         {/* Analytics with Suspense for performance */}

@@ -1,73 +1,71 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// Use environment variable for API key
+const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 export async function POST(request: Request) {
   try {
+    // Check if API key exists
+    if (!API_KEY) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'API key is missing. Please check your environment configuration.'
+        },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const { prompt } = body;
     
-    // This is a mock implementation - in a real app, you'd call an AI API
-    // For example, OpenAI's API
+    // Initialize Gemini AI
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      
+    // Prepare the prompt with context for better LaTeX generation
+    const fullPrompt = `You are a LaTeX expert. Generate LaTeX code for the following request. 
+    Only include valid LaTeX code without explanations or markdown formatting. 
+    Request: ${prompt}`;
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    let latexContent = "";
-    
-    // Generate some fake LaTeX based on the prompt
-    if (prompt.includes("matrix")) {
-      latexContent = `\\begin{pmatrix}
-  a_{11} & a_{12} & a_{13} \\\\
-  a_{21} & a_{22} & a_{23} \\\\
-  a_{31} & a_{32} & a_{33}
-\\end{pmatrix}`;
-    } else if (prompt.includes("quadratic")) {
-      latexContent = `x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}`;
-    } else if (prompt.includes("table")) {
-      latexContent = `\\begin{table}[h]
-  \\centering
-  \\begin{tabular}{|c|c|c|}
-    \\hline
-    Column 1 & Column 2 & Column 3 \\\\
-    \\hline
-    Data 1 & Data 2 & Data 3 \\\\
-    Data 4 & Data 5 & Data 6 \\\\
-    \\hline
-  \\end{tabular}
-  \\caption{Sample Table}
-  \\label{tab:sample}
-\\end{table}`;
-    } else if (prompt.includes("flowchart") || prompt.includes("diagram")) {
-      latexContent = `\\begin{tikzpicture}[node distance=2cm]
-  \\node (start) [startstop] {Start};
-  \\node (pro1) [process, below of=start] {Process 1};
-  \\node (dec1) [decision, below of=pro1] {Decision 1};
-  \\node (pro2a) [process, below of=dec1, xshift=-3cm] {Process 2A};
-  \\node (pro2b) [process, below of=dec1, xshift=3cm] {Process 2B};
-  \\node (stop) [startstop, below of=dec1, yshift=-3cm] {Stop};
-  
-  \\draw [arrow] (start) -- (pro1);
-  \\draw [arrow] (pro1) -- (dec1);
-  \\draw [arrow] (dec1) -- node[anchor=east] {yes} (pro2a);
-  \\draw [arrow] (dec1) -- node[anchor=west] {no} (pro2b);
-  \\draw [arrow] (pro2a) |- (stop);
-  \\draw [arrow] (pro2b) |- (stop);
-\\end{tikzpicture}`;
-    } else {
-      latexContent = `% Generated from prompt: "${prompt}"
-\\begin{equation}
-  f(x) = \\int_{a}^{b} g(x) \\, dx
-\\end{equation}`;
+    try {
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      const latexContent = response.text();
+      
+      return NextResponse.json({ 
+        success: true,
+        latex: latexContent
+      });
+    } catch (error: any) {
+      console.error("Gemini API error:", error);
+      
+      let errorMessage = 'Failed to generate LaTeX content';
+      if (error.message) {
+        if (error.message.includes("API key")) {
+          errorMessage = "API key is invalid. Please check your API configuration.";
+        } else if (error.message.includes("quota")) {
+          errorMessage = "API quota exceeded. Please try again later.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      return NextResponse.json(
+        { 
+          success: false,
+          error: errorMessage
+        },
+        { status: 500 }
+      );
     }
-    
-    return NextResponse.json({ 
-      success: true,
-      latex: latexContent
-    });
   } catch (error) {
+    console.error("Request processing error:", error);
     return NextResponse.json(
       { 
         success: false,
-        error: 'Failed to generate LaTeX content'
+        error: 'Failed to process your request'
       },
       { status: 500 }
     );

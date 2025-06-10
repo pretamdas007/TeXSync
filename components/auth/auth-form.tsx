@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { useAuth } from "./auth-provider";
 
 type AuthMode = "login" | "signup";
 
@@ -37,7 +37,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { login, signup } = useAuth();
   const router = useRouter();
   
   const isLogin = mode === "login";
@@ -53,30 +53,23 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const onSubmit = async (values: LoginFormValues | SignupFormValues) => {
     setIsLoading(true);
     
-    // Simulate API request
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      if (Math.random() > 0.2) { // Simulate success (80% of the time)
-        toast({
-          title: isLogin ? "Logged in successfully" : "Account created successfully",
-          description: isLogin 
-            ? "Welcome back to TeXSync!" 
-            : "Welcome to TeXSync! You can now start creating documents.",
-        });
-        
-        // Redirect to dashboard/editor
-        router.push("/editor");
-      } else { // Simulate error
-        toast({
-          title: "An error occurred",
-          description: isLogin 
-            ? "Invalid email or password." 
-            : "There was a problem creating your account. Please try again.",
-          variant: "destructive",
-        });
-      }
-    }, 1500);
+    let success = false;
+    
+    if (isLogin) {
+      // Use actual login API
+      success = await login(values.email, values.password);
+    } else {
+      const signupValues = values as SignupFormValues;
+      // Use actual signup API
+      success = await signup(signupValues.name, signupValues.email, signupValues.password);
+    }
+    
+    if (success) {
+      // Redirect to dashboard/editor
+      router.push("/editor");
+    }
+    
+    setIsLoading(false);
   };
   
   return (
