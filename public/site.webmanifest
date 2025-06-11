@@ -1,0 +1,16 @@
+{
+  "name": "TeXSync",
+  "short_name": "TeXSync",
+  "description": "Collaborative LaTeX Editor with AI Assistant",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

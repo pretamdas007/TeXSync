@@ -3,8 +3,12 @@ import type { NextRequest } from 'next/server';
 import { verifyToken } from './lib/jwt';
 
 export async function middleware(request: NextRequest) {
-  // Define protected routes
-  const protectedRoutes = ['/editor', '/dashboard'];
+  // Skip authentication in development mode
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next();
+  }
+    // Define protected routes (removed /editor for public demo)
+  const protectedRoutes = ['/dashboard'];
   const authRoutes = ['/login', '/signup'];
   
   const path = request.nextUrl.pathname;
