@@ -787,11 +787,20 @@ export function AIChat({ latex, onInsertCode, isMinimized, onToggleMinimize }: A
     command: string;
     timestamp: number;
     successful: boolean;
-  }>>([]);
-  const [showCommandFeedbackUI, setShowCommandFeedbackUI] = useState(false);
+  }>>([]);  const [showCommandFeedbackUI, setShowCommandFeedbackUI] = useState(false);
   const [selectedCommandCategory, setSelectedCommandCategory] = useState<string | null>(null);
+  
+  // Define type for voice commands
+  type VoiceCommand = {
+    name: string;
+    pattern: RegExp;
+    action: () => void;
+    category: string;
+    description: string;
+  };
+  
   // Define voice commands with improved natural language patterns
-  const voiceCommands = [
+  const voiceCommands: VoiceCommand[] = [
     // Navigation commands
     { 
       name: "chat", 
@@ -1020,10 +1029,9 @@ export function AIChat({ latex, onInsertCode, isMinimized, onToggleMinimize }: A
           const confidence = event.results[i][0].confidence;
           setVoiceConfidence(confidence);
           setRecognizedCommand(transcript);
-          
-          // Process the transcript for commands
+            // Process the transcript for commands
           let commandFound = false;
-          let bestMatchCommand = null;
+          let bestMatchCommand: VoiceCommand | null = null;
           let bestMatchScore = 0.6; // Threshold for command matching
           
           // Advanced command matching logic
@@ -1068,24 +1076,23 @@ export function AIChat({ latex, onInsertCode, isMinimized, onToggleMinimize }: A
             
             // Execute the command
             bestMatchCommand.action();
-            
-            // Add to command history
+              // Add to command history
             setCommandHistory(prev => [...prev.slice(-9), { 
-              command: bestMatchCommand.name, 
+              command: bestMatchCommand!.name, 
               timestamp: Date.now(), 
               successful: true 
             }]);
             
             // Update command feedback state
             setCommandFeedback({
-              command: bestMatchCommand.name,
+              command: bestMatchCommand!.name,
               status: 'success',
               timestamp: Date.now()
             });
             
             // Visual feedback
             toast({
-              title: `Command: ${bestMatchCommand.name}`,
+              title: `Command: ${bestMatchCommand!.name}`,
               description: `Executed: "${transcript}"`,
               variant: "default",
             });
@@ -1453,25 +1460,11 @@ export function AIChat({ latex, onInsertCode, isMinimized, onToggleMinimize }: A
                       {/* Message content */}                      <div className="text-sm max-w-none">
                         <ReactMarkdown 
                           remarkPlugins={[remarkGfm]}
-                          unwrapDisallowed={true}
                           components={{
-                            p: ({node, className, children, ...props}) => {
-                              // Check if children contain block elements that shouldn't be in a paragraph
-                              const hasBlockElement = React.Children.toArray(children).some(child => {
-                                if (!React.isValidElement(child)) return false;
-                                const childType = child.type;
-                                // Check if it's a DOM element with a tagName that's a block element
-                                if (typeof childType === 'string') {
-                                  return ['div', 'pre', 'table', 'ul', 'ol', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(childType);
-                                }
-                                return false;
-                              });
-                              
-                              // If there are block elements inside, render as div instead of p
-                              return hasBlockElement ? 
-                                <div className="text-sm mb-2" {...props}>{children}</div> : 
-                                <p className="text-sm mb-2" {...props}>{children}</p>;
-                            },
+                            // Always use div instead of p to avoid hydration issues
+                            p: ({node, children, ...props}) => (
+                              <div className="text-sm mb-2" {...props}>{children}</div>
+                            ),
                             // Handle div elements with consistent styling
                             div: ({node, children, ...props}) => {
                               return <div className="text-sm mb-2" {...props}>{children}</div>;

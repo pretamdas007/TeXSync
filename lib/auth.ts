@@ -1,4 +1,4 @@
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 export { generateToken, verifyToken } from './jwt';
 
 // Number of salt rounds for bcrypt
