@@ -234,10 +234,13 @@ export default function EditorPage() {
         error: error instanceof Error ? error.message : "An unknown error occurred"
       };
     }
-  };
-  // Update the compilePdf function to include the engine
+  };  // Update the compilePdf function to include the engine
   const compilePdf = async () => {
     setIsCompiling(true);
+    
+    // Debug: Log the backend URL
+    console.log('Backend URL:', BACKEND_URL);
+    
     try {
       // Send the LaTeX content to the backend for compilation
       const response = await fetch(`${BACKEND_URL}/api/compile`, {

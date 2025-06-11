@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
 import { comparePassword, generateToken } from '@/lib/auth';
+
+// Dynamically import prisma to avoid build-time issues
+async function getPrisma() {
+  const { prisma } = await import('@/lib/prisma');
+  return prisma;
+}
 
 export async function POST(request: Request) {
   try {
+    // Check if we're in build mode
+    if (process.env.NODE_ENV === 'development' && !request.url) {
+      return NextResponse.json({ error: 'Build mode' }, { status: 503 });
+    }
+
     const body = await request.json();
     const { email, password } = body;
 
@@ -14,6 +24,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const prisma = await getPrisma();
 
     // Find user
     const user = await prisma.user.findUnique({
