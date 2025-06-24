@@ -1,12 +1,18 @@
 {
+  "framework": "nextjs",
+  "buildCommand": "npm install && npm run build",
   "functions": {
     "app/api/*/route.ts": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "memory": 3008
     }
   },
   "build": {
     "env": {
-      "NODE_OPTIONS": "--max-old-space-size=4096"
+      "NODE_OPTIONS": "--max-old-space-size=8192",
+      "NODE_ENV": "production",
+      "NEXT_TELEMETRY_DISABLED": "1"
     }
-  }
+  },
+  "regions": ["iad1"]
 }
