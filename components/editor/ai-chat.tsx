@@ -1020,10 +1020,9 @@ export function AIChat({ latex, onInsertCode, isMinimized, onToggleMinimize }: A
           const confidence = event.results[i][0].confidence;
           setVoiceConfidence(confidence);
           setRecognizedCommand(transcript);
-          
-          // Process the transcript for commands
+            // Process the transcript for commands
           let commandFound = false;
-          let bestMatchCommand = null;
+          let bestMatchCommand: typeof voiceCommands[0] | null = null;
           let bestMatchScore = 0.6; // Threshold for command matching
           
           // Advanced command matching logic
@@ -1061,31 +1060,30 @@ export function AIChat({ latex, onInsertCode, isMinimized, onToggleMinimize }: A
                 bestMatchScore = matchScore;
               }
             }
-          }
-          
-          if (bestMatchCommand) {
+          }          if (bestMatchCommand) {
             commandFound = true;
             
             // Execute the command
             bestMatchCommand.action();
             
-            // Add to command history
-            setCommandHistory(prev => [...prev.slice(-9), { 
-              command: bestMatchCommand.name, 
-              timestamp: Date.now(), 
-              successful: true 
+            // Add to command history (with explicit null check)
+            const commandName = bestMatchCommand.name;
+            setCommandHistory(prev => [...prev.slice(-9), {
+              command: commandName,
+              timestamp: Date.now(),
+              successful: true
             }]);
             
             // Update command feedback state
             setCommandFeedback({
-              command: bestMatchCommand.name,
+              command: commandName,
               status: 'success',
               timestamp: Date.now()
             });
             
             // Visual feedback
             toast({
-              title: `Command: ${bestMatchCommand.name}`,
+              title: `Command: ${commandName}`,
               description: `Executed: "${transcript}"`,
               variant: "default",
             });
