@@ -18,30 +18,77 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { prompt } = body;
+    const { prompt, message, context, conversationHistory } = body;
     
     // Initialize Gemini AI
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      
-    // Prepare the prompt with context for better LaTeX generation
-    const fullPrompt = `You are a LaTeX expert. Generate LaTeX code for the following request. 
-    Only include valid LaTeX code without explanations or markdown formatting. 
-    Request: ${prompt}`;
+    
+    let fullPrompt: string;
+    
+    // Handle different request types
+    if (message && context) {
+      // Chat functionality
+      const systemPrompt = `You are TeXSync AI, an expert LaTeX and academic writing assistant powered by Google Gemini. You help users with:
+
+- LaTeX syntax and code generation
+- Mathematical equations and formulas
+- Document structure and formatting
+- Academic writing assistance
+- TikZ diagrams and graphics
+- Table creation and styling
+- Bibliography and citation management
+- Error debugging and troubleshooting
+
+Provide helpful, detailed responses in Markdown format. When showing LaTeX code, use proper code blocks. For mathematical expressions, use LaTeX math notation with $ for inline math and $$ for display math. Always be encouraging and educational.
+
+Context: ${context}`;
+
+      // Build conversation context
+      let conversationContext = "";
+      if (conversationHistory && conversationHistory.length > 0) {
+        conversationContext = "\n\nRecent conversation:\n" + 
+          conversationHistory.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n') + 
+          "\n\n";
+      }
+
+      fullPrompt = `${systemPrompt}${conversationContext}User: ${message}`;
+    } else if (prompt) {
+      // Legacy LaTeX generation functionality
+      fullPrompt = `You are a LaTeX expert. Generate LaTeX code for the following request. 
+      Only include valid LaTeX code without explanations or markdown formatting. 
+      Request: ${prompt}`;
+    } else {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'No valid input provided. Please include either "message" or "prompt" in your request.'
+        },
+        { status: 400 }
+      );
+    }
     
     try {
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
-      const latexContent = response.text();
+      const responseText = response.text();
       
-      return NextResponse.json({ 
-        success: true,
-        latex: latexContent
-      });
+      // Return appropriate response format based on request type
+      if (message && context) {
+        return NextResponse.json({ 
+          success: true,
+          response: responseText
+        });
+      } else {
+        return NextResponse.json({ 
+          success: true,
+          latex: responseText
+        });
+      }
     } catch (error: any) {
       console.error("Gemini API error:", error);
       
-      let errorMessage = 'Failed to generate LaTeX content';
+      let errorMessage = 'Failed to generate response';
       if (error.message) {
         if (error.message.includes("API key")) {
           errorMessage = "API key is invalid. Please check your API configuration.";

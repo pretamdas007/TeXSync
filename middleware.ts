@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from './lib/jwt';
+// import { verifyToken } from './lib/auth'; // Disabled for now
 
 export async function middleware(request: NextRequest) {
-  // Skip authentication in development mode
-  if (process.env.NODE_ENV === 'development') {
-    return NextResponse.next();
-  }
-    // Define protected routes (removed /editor for public demo)
-  const protectedRoutes = ['/dashboard'];
+  // Authentication temporarily disabled
+  // Allow all routes without authentication
+  return NextResponse.next();
+  
+  /*
+  // Define protected routes
+  const protectedRoutes = ['/editor', '/dashboard'];
   const authRoutes = ['/login', '/signup'];
   
   const path = request.nextUrl.pathname;
@@ -50,6 +51,7 @@ export async function middleware(request: NextRequest) {
   }
 
   return NextResponse.next();
+  */
 }
 
 // Configure the middleware to run only on specific paths

@@ -53,23 +53,59 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const onSubmit = async (values: LoginFormValues | SignupFormValues) => {
     setIsLoading(true);
     
-    let success = false;
-    
-    if (isLogin) {
-      // Use actual login API
-      success = await login(values.email, values.password);
-    } else {
-      const signupValues = values as SignupFormValues;
-      // Use actual signup API
-      success = await signup(signupValues.name, signupValues.email, signupValues.password);
+    try {
+      let success = false;
+      
+      console.log('[AUTH FORM] Starting authentication process...');
+      console.log('[AUTH FORM] Mode:', mode);
+      console.log('[AUTH FORM] Form values:', { email: values.email, ...(isLogin ? {} : { name: (values as SignupFormValues).name }) });
+      
+      if (isLogin) {
+        console.log('[AUTH FORM] Calling login function...');
+        success = await login(values.email, values.password);
+        console.log('[AUTH FORM] Login function completed, success:', success);
+      } else {
+        const signupValues = values as SignupFormValues;
+        console.log('[AUTH FORM] Calling signup function...');
+        success = await signup(signupValues.name, signupValues.email, signupValues.password);
+        console.log('[AUTH FORM] Signup function completed, success:', success);
+      }
+      
+      if (success) {
+        console.log('[AUTH FORM] Authentication successful, preparing navigation...');
+        
+        // Get callback URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const callbackUrl = urlParams.get('callbackUrl') || '/editor';
+        console.log('[AUTH FORM] Navigation target:', callbackUrl);
+        
+        // Give the auth provider a moment to update state before navigating
+        console.log('[AUTH FORM] Waiting for auth state to propagate...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Use router.push for client-side navigation first, then fallback to window.location
+        console.log('[AUTH FORM] Attempting client-side navigation to:', callbackUrl);
+        try {
+          router.push(callbackUrl);
+          
+          // If client-side navigation doesn't work after a short delay, use window.location as fallback
+          setTimeout(() => {
+            console.log('[AUTH FORM] Fallback navigation with window.location.href');
+            window.location.href = callbackUrl;
+          }, 500);
+        } catch (err) {
+          console.log('[AUTH FORM] Client-side navigation failed, using window.location.href');
+          window.location.href = callbackUrl;
+        }
+        return; // Don't continue execution
+      } else {
+        console.log('[AUTH FORM] Authentication failed');
+      }
+    } catch (error) {
+      console.error('[AUTH FORM] Error in form submission:', error);
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (success) {
-      // Redirect to dashboard/editor
-      router.push("/editor");
-    }
-    
-    setIsLoading(false);
   };
   
   return (

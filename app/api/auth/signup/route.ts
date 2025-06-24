@@ -1,29 +1,19 @@
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 import { hashPassword, generateToken } from '@/lib/auth';
-
-// Dynamically import prisma to avoid build-time issues
-async function getPrisma() {
-  const { prisma } = await import('@/lib/prisma');
-  return prisma;
-}
 
 export async function POST(request: Request) {
   try {
-    // Check if we're in build mode
-    if (process.env.NODE_ENV === 'development' && !request.url) {
-      return NextResponse.json({ error: 'Build mode' }, { status: 503 });
-    }
-
     const body = await request.json();
-    const { name, email, password } = body;    // Validate input
+    const { name, email, password } = body;
+
+    // Validate input
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: 'Name, email and password are required' },
         { status: 400 }
       );
     }
-
-    const prisma = await getPrisma();
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -68,13 +58,20 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
+      success: true,
       user,
       token
     });
   } catch (error) {
     console.error('Error in signup route:', error);
+    
+    // Return a proper JSON error response
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

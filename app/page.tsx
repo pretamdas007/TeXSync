@@ -10,8 +10,7 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-gray-800 bg-background sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Logo size="md" />
-          <nav className="hidden md:flex items-center space-x-6 mr-6">
+          <Logo size="md" />          <nav className="hidden md:flex items-center space-x-6 mr-6">
             <Link href="/features" className="text-sm text-gray-300 hover:text-white transition-colors">
               Features
             </Link>
@@ -23,6 +22,10 @@ export default function Home() {
             </Link>
             <Link href="/learn-more" className="text-sm text-gray-300 hover:text-white transition-colors">
               Learn More
+            </Link>
+            <Link href="/ai-chat" className="flex items-center gap-1 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1.5 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-105">
+              <Sparkles className="w-3 h-3" />
+              AI Assistant
             </Link>
           </nav>
           <div className="space-x-4">
@@ -78,8 +81,7 @@ export default function Home() {
                   Convert Documents to LaTeX
                 </Link>
               </Button>
-              
-              <Button 
+                <Button 
                 size="lg" 
                 asChild 
                 className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white border-none shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
@@ -90,6 +92,17 @@ export default function Home() {
                 </Link>
               </Button>
               
+              <Button 
+                size="lg" 
+                asChild 
+                className="bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white border-none shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 relative overflow-hidden group"
+              >
+                <Link href="/ai-chat" className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                  AI LaTeX Assistant
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                </Link>
+              </Button>
               
             </div>
             
@@ -454,9 +467,23 @@ export default function Home() {
                 <Link href="/editor" className="px-8">Try Without Signup</Link>
               </Button>
             </div>
-          </div>
-        </section>
+          </div>        </section>
       </main>
+
+      {/* Floating AI Assistant Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Link href="/ai-chat">
+          <Button
+            size="lg"
+            className="bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white border-none shadow-lg hover:shadow-xl rounded-full px-6 py-3 transition-all duration-300 hover:scale-110 group"
+          >
+            <Sparkles className="w-5 h-5 mr-2 animate-pulse" />
+            <span className="hidden sm:inline">AI Assistant</span>
+            <span className="sm:hidden">AI</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 rounded-full"></div>
+          </Button>
+        </Link>
+      </div>
 
       {/* Footer */}
       <footer className="bg-black py-16 mt-auto border-t border-gray-800">

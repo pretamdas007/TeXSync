@@ -165,6 +165,56 @@ code, pre, .code-editor {
   @apply bg-muted-foreground/40;
 }
 
+/* Custom scrollbar styles for floating chat */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
+
+.scrollbar-thumb-violet-500\/50::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hover\:scrollbar-thumb-violet-400\/70:hover::-webkit-scrollbar-thumb {
+  background: rgba(167, 139, 250, 0.7);
+}
+
+/* Ensure smooth scrolling in chat */
+.chat-scroll-container {
+  scroll-behavior: smooth;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Hide scrollbar in Firefox but keep functionality */
+.chat-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.5) transparent;
+}
+
 /* Enhanced animation classes */
 @layer utilities {
   .transition-all {
