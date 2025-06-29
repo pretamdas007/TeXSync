@@ -407,11 +407,11 @@ function EditorPageComponent() {
       setShowTemplatesPanel(panel === 'templates');
     };
 
-  // Add this to your state variables  // Set XeLaTeX as default for better Unicode support with the heart symbol
-  const [latexEngine, setLatexEngine] = useState<'pdflatex' | 'xelatex' | 'lualatex'>('xelatex');
+  // Add this to your state variables  // Set pdfLaTeX as default for better compatibility
+  const [latexEngine, setLatexEngine] = useState<'pdflatex' | 'xelatex' | 'lualatex'>('pdflatex');
   // Get backend URL from environment variable (for Vercel/Render deployment)
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-
+  //const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://texsync.onrender.com";
   // Update the compilePdf function to include the engine
   const compilePdf = async () => {
     setIsCompiling(true);

@@ -9,13 +9,16 @@ const execPromise = util.promisify(exec);
  */
 exports.compileLaTeX = async (req, res) => {
   try {
-    const { latex, engine = 'pdflatex' } = req.body;
+    let { latex, engine = 'pdflatex' } = req.body;
     
     if (!latex) {
       return res.status(400).json({ error: 'LaTeX content is required' });
     }
     
+    // Always use pdflatex for now until other engines are properly installed
+    engine = 'pdflatex';
     console.log(`Compiling LaTeX with engine: ${engine}`);
+    
     const { success, pdfPath, errors } = await latexService.compile(latex, engine);
     
     if (success) {
