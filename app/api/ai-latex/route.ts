@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Use environment variable for API key
-const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+// Use server-side environment variable for API key (NOT NEXT_PUBLIC_)
+const API_KEY = process.env.GEMINI_API_KEY;
 
 export async function POST(request: Request) {
   try {

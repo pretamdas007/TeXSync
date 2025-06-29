@@ -17,7 +17,8 @@ if (!fs.existsSync(tempDir)) {
 const corsOptions = {
   origin: [
     'http://localhost:3000',
-    'https://texsync.vercel.app', // Replace with your actual Vercel URL
+    'https://texsync-3gh0kf37d-pretamdas007s-projects.vercel.app', // Your actual Vercel URL
+    'https://texsync.vercel.app', // If you set up a custom domain
     /\.vercel\.app$/
   ],
   credentials: true,
