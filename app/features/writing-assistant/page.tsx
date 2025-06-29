@@ -2,6 +2,7 @@
 
 import { Logo } from "@/components/common/logo";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
@@ -10,20 +11,150 @@ import {
   FileText, LanguagesIcon, Layers, Link2, Pencil, Search, Shield, Sparkles
 } from "lucide-react";
 
+// Analysis interfaces
+interface GrammarIssue {
+  id: string;
+  type: 'grammar' | 'style' | 'clarity' | 'word-choice' | 'academic-tone';
+  severity: 'low' | 'medium' | 'high';
+  message: string;
+  suggestion: string;
+  startIndex: number;
+  endIndex: number;
+  originalText: string;
+  replacement?: string;
+}
+
+interface PlagiarismMatch {
+  id: string;
+  text: string;
+  similarity: number;
+  source: {
+    title: string;
+    authors: string[];
+    year: number;
+    type: 'journal' | 'book' | 'web' | 'conference';
+    url?: string;
+  };
+  startIndex: number;
+  endIndex: number;
+  context: string;
+}
+
+interface CitationIssue {
+  id: string;
+  text: string;
+  type: 'missing' | 'incomplete' | 'format';
+  suggestion: string;
+  startIndex: number;
+  endIndex: number;
+  suggestedCitation?: {
+    bibtex: string;
+    formatted: string;
+    key: string;
+  };
+}
+
+interface AnalysisResult {
+  success: boolean;
+  plagiarismScore: number;
+  grammarScore: number;
+  originalityScore: number;
+  wordCount: number;
+  grammarIssues: GrammarIssue[];
+  plagiarismMatches: PlagiarismMatch[];
+  citationIssues: CitationIssue[];
+  summary: {
+    totalIssues: number;
+    criticalIssues: number;
+    improvementSuggestions: string[];
+  };
+}
+
 export default function WritingAssistantPage() {
   const [activeTab, setActiveTab] = useState("plagiarism");
-  const [demoText, setDemoText] = useState("This approach was first proposed by Smith et al. in their seminal paper. The equation represents a fundamental relationship in quantum mechanics. Furthermore, the results show a significant improvement over existing methods.");
+  const [demoText, setDemoText] = useState("This approach was first proposed by Smith et al. in their seminal paper. The equation represents a fundamental relationship in quantum mechanics. Furthermore, the results show a significant improvement over existing methods. Machine learning algorithms have been shown to outperform traditional methods by approximately 25%. However, there are several limitations that must be considered.");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Demo function to simulate analysis
-  const analyzeDemoText = () => {
+  // Sample texts for testing
+  const sampleTexts = [
+    {
+      title: "Research Paper Excerpt",
+      text: "This approach was first proposed by Smith et al. in their seminal paper. The equation represents a fundamental relationship in quantum mechanics. Furthermore, the results show a significant improvement over existing methods. Machine learning algorithms have been shown to outperform traditional methods by approximately 25%. However, there are several limitations that must be considered."
+    },
+    {
+      title: "Technical Documentation", 
+      text: "The algorithm processes data efficiently using advanced techniques. Studies have shown that this method is effective. The implementation was straightforward and results were obtained quickly. Performance metrics indicate substantial improvements across all test cases."
+    },
+    {
+      title: "Academic Abstract",
+      text: "Recent advances in artificial intelligence have demonstrated significant potential for solving complex problems. Our research builds upon previous work in machine learning to develop novel approaches. The methodology employed shows promising results with accuracy rates exceeding 90%. These findings contribute to the growing body of literature in this field."
+    }
+  ];
+
+  // Real AI analysis function
+  const analyzeDemoText = async () => {
+    if (!demoText.trim()) return;
+    
     setIsAnalyzing(true);
     setAnalysisComplete(false);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      console.log('Starting analysis...', { textLength: demoText.length });
+      
+      const response = await fetch('/api/writing-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: demoText,
+          type: 'comprehensive',
+          context: 'Academic research paper'
+        }),
+      });
+
+      console.log('Response received:', { status: response.status, ok: response.ok });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Analysis result:', result);
+      
+      if (result.success) {
+        setAnalysisResult(result);
+        setAnalysisComplete(true);
+      } else {
+        throw new Error(result.error || 'Analysis failed');
+      }
+    } catch (err) {
+      console.error('Analysis error:', err);
+      setError(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
+    } finally {
       setIsAnalyzing(false);
-      setAnalysisComplete(true);
-    }, 2000);
+    }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return 'text-green-500';
+    if (score >= 75) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'high': return 'text-red-500 bg-red-500/10 border-red-500/30';
+      case 'medium': return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30';
+      case 'low': return 'text-blue-500 bg-blue-500/10 border-blue-500/30';
+      default: return 'text-gray-500 bg-gray-500/10 border-gray-500/30';
+    }
   };
 
   return (
@@ -363,17 +494,59 @@ export default function WritingAssistantPage() {
                   <label htmlFor="demoText" className="block text-sm font-medium mb-2">Your Text</label>
                   <textarea 
                     id="demoText"
-                    className="w-full h-32 bg-black border border-gray-800 rounded-lg p-3 text-sm text-gray-300 focus:border-red-500 focus:outline-none"
+                    className="w-full h-40 bg-black border border-gray-800 rounded-lg p-3 text-sm text-gray-300 focus:border-red-500 focus:outline-none resize-none"
                     value={demoText}
                     onChange={(e) => setDemoText(e.target.value)}
+                    placeholder="Paste your academic text here for analysis. Include citations, technical content, and any areas you're unsure about..."
                   />
+                  <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+                    <span>{demoText.split(/\s+/).filter(word => word.length > 0).length} words</span>
+                    <span>Real AI analysis powered by Google Gemini</span>
+                  </div>
+                  
+                  {/* Sample Text Options */}
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-500 mb-2">Try these sample texts:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {sampleTexts.map((sample, index) => (
+                        <Button
+                          key={index}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDemoText(sample.text)}
+                          className="h-7 text-xs bg-gray-800/50 hover:bg-gray-700/50"
+                        >
+                          {sample.title}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="flex justify-end mb-6">
-                  <Button onClick={analyzeDemoText} disabled={isAnalyzing} className="flex items-center">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-2">
+                    {isAnalyzing && (
+                      <div className="flex items-center text-sm text-blue-400">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-400 border-t-transparent mr-2"></div>
+                        <span>AI is analyzing your text...</span>
+                      </div>
+                    )}
+                    {analysisComplete && !isAnalyzing && (
+                      <div className="flex items-center text-sm text-green-400">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        <span>Analysis complete</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button 
+                    onClick={analyzeDemoText} 
+                    disabled={isAnalyzing || !demoText.trim()} 
+                    className="flex items-center bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50"
+                  >
                     {isAnalyzing ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-white mr-2"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white mr-2"></div>
                         Analyzing...
                       </>
                     ) : (
@@ -385,32 +558,93 @@ export default function WritingAssistantPage() {
                   </Button>
                 </div>
                 
-                {analysisComplete && (
+                {error && (
+                  <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                      <span className="text-red-400 font-medium">Analysis Error</span>
+                    </div>
+                    <p className="text-red-300 text-sm mt-1">{error}</p>
+                  </div>
+                )}
+                
+                {analysisComplete && analysisResult && (
                   <div className="space-y-6">
+                    {/* Overall Scores */}
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="bg-black/40 p-4 rounded-lg text-center">
+                        <div className={`text-2xl font-bold ${getScoreColor(analysisResult.plagiarismScore)}`}>
+                          {analysisResult.plagiarismScore}%
+                        </div>
+                        <div className="text-sm text-gray-400">Originality</div>
+                      </div>
+                      <div className="bg-black/40 p-4 rounded-lg text-center">
+                        <div className={`text-2xl font-bold ${getScoreColor(analysisResult.grammarScore)}`}>
+                          {analysisResult.grammarScore}%
+                        </div>
+                        <div className="text-sm text-gray-400">Grammar</div>
+                      </div>
+                      <div className="bg-black/40 p-4 rounded-lg text-center">
+                        <div className="text-white text-2xl font-bold">{analysisResult.wordCount}</div>
+                        <div className="text-sm text-gray-400">Words</div>
+                      </div>
+                    </div>
+
                     <h4 className="font-medium">Analysis Results:</h4>
                     
                     {activeTab === 'plagiarism' && (
                       <>
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center">
-                            <Shield className="h-5 w-5 text-green-500 mr-2" />
-                            <span className="font-medium">Originality Score: 91%</span>
+                            <Shield className={`h-5 w-5 mr-2 ${getScoreColor(analysisResult.plagiarismScore)}`} />
+                            <span className="font-medium">Originality Score: {analysisResult.plagiarismScore}%</span>
                           </div>
                           <Button size="sm" variant="outline">View Details</Button>
                         </div>
                         
-                        <div className="bg-black/40 p-4 rounded-lg">
-                          <p className="mb-4">Potential plagiarism detected in the following segment:</p>
-                          <div className="bg-red-500/10 p-3 rounded border border-red-500/30 mb-4">
-                            <p className="text-sm text-gray-300">
-                              "<span className="text-red-400">This approach was first proposed by Smith et al. in their seminal paper.</span>" - This statement requires a citation.
+                        {analysisResult.plagiarismMatches.length > 0 ? (
+                          <div className="space-y-4">
+                            {analysisResult.plagiarismMatches.map((match) => (
+                              <div key={match.id} className="bg-black/40 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-sm font-medium text-red-400">
+                                    {match.similarity}% similarity detected
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {match.source.type}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="bg-red-500/10 p-3 rounded border border-red-500/30 mb-4">
+                                  <p className="text-sm text-gray-300">
+                                    "<span className="text-red-400">{match.text}</span>"
+                                  </p>
+                                </div>
+                                
+                                <div className="text-sm text-gray-400 mb-3">
+                                  <strong>Source:</strong> {match.source.title} by {match.source.authors.join(', ')} ({match.source.year})
+                                </div>
+                                
+                                <p className="text-sm text-gray-400 mb-4">{match.context}</p>
+                                
+                                <div className="flex gap-2">
+                                  <Button size="sm">Add Citation</Button>
+                                  <Button size="sm" variant="outline">Rephrase</Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+                            <div className="flex items-center">
+                              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                              <span className="text-green-400 font-medium">No plagiarism detected</span>
+                            </div>
+                            <p className="text-green-300 text-sm mt-1">
+                              Your content appears to be original with no significant matches found.
                             </p>
                           </div>
-                          <p className="text-sm text-gray-400">
-                            This phrase closely matches content from the paper "Quantum Computing Approaches" by Smith, J. et al. (2020).
-                          </p>
-                          <Button size="sm" className="mt-4">Add Citation</Button>
-                        </div>
+                        )}
                       </>
                     )}
                     
@@ -418,47 +652,64 @@ export default function WritingAssistantPage() {
                       <>
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center">
-                            <Pencil className="h-5 w-5 text-yellow-500 mr-2" />
-                            <span className="font-medium">Grammar Score: 87%</span>
+                            <Pencil className={`h-5 w-5 mr-2 ${getScoreColor(analysisResult.grammarScore)}`} />
+                            <span className="font-medium">Grammar Score: {analysisResult.grammarScore}%</span>
                           </div>
                           <Button size="sm" variant="outline">View All Issues</Button>
                         </div>
                         
-                        <div className="space-y-4">
-                          <div className="bg-black/40 p-4 rounded-lg">
-                            <div className="flex items-start">
-                              <div className="p-1.5 bg-yellow-500/10 rounded mt-0.5 mr-2">
-                                <AlertCircle className="h-3 w-3 text-yellow-500" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-300 mb-1">
-                                  <span className="bg-yellow-500/20 text-yellow-300 px-1 rounded">The equation represents</span> - Consider using active voice
-                                </p>
-                                <p className="text-xs text-gray-500">Suggested: "The equation demonstrates" or "The equation shows"</p>
-                                <div className="mt-2">
-                                  <Button size="sm" variant="outline" className="h-7 text-xs">Accept</Button>
+                        {analysisResult.grammarIssues.length > 0 ? (
+                          <div className="space-y-4">
+                            {analysisResult.grammarIssues.map((issue) => (
+                              <div key={issue.id} className="bg-black/40 p-4 rounded-lg">
+                                <div className="flex items-start">
+                                  <div className={`p-1.5 rounded mt-0.5 mr-3 ${getSeverityColor(issue.severity)}`}>
+                                    <AlertCircle className="h-3 w-3" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge variant="outline" className="text-xs capitalize">
+                                        {issue.type}
+                                      </Badge>
+                                      <Badge variant="outline" className={`text-xs ${getSeverityColor(issue.severity)}`}>
+                                        {issue.severity}
+                                      </Badge>
+                                    </div>
+                                    
+                                    <p className="text-sm text-gray-300 mb-2">
+                                      <span className="bg-yellow-500/20 text-yellow-300 px-1 rounded">
+                                        {issue.originalText}
+                                      </span> - {issue.message}
+                                    </p>
+                                    
+                                    <p className="text-xs text-gray-500 mb-3">
+                                      Suggested: "{issue.replacement || issue.suggestion}"
+                                    </p>
+                                    
+                                    <div className="flex gap-2">
+                                      <Button size="sm" variant="outline" className="h-7 text-xs">
+                                        Accept
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 text-xs">
+                                        Ignore
+                                      </Button>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            ))}
                           </div>
-                          
-                          <div className="bg-black/40 p-4 rounded-lg">
-                            <div className="flex items-start">
-                              <div className="p-1.5 bg-blue-500/10 rounded mt-0.5 mr-2">
-                                <AlertCircle className="h-3 w-3 text-blue-500" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-300 mb-1">
-                                  <span className="bg-blue-500/20 text-blue-300 px-1 rounded">Furthermore, the results show a significant improvement</span> - Vague statement
-                                </p>
-                                <p className="text-xs text-gray-500">Consider adding specific metrics, such as percentage improvement or statistical significance (p-value)</p>
-                                <div className="mt-2">
-                                  <Button size="sm" variant="outline" className="h-7 text-xs">Edit Section</Button>
-                                </div>
-                              </div>
+                        ) : (
+                          <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+                            <div className="flex items-center">
+                              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                              <span className="text-green-400 font-medium">Excellent grammar!</span>
                             </div>
+                            <p className="text-green-300 text-sm mt-1">
+                              No significant grammar or style issues detected.
+                            </p>
                           </div>
-                        </div>
+                        )}
                       </>
                     )}
                     
@@ -467,46 +718,79 @@ export default function WritingAssistantPage() {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center">
                             <Link2 className="h-5 w-5 text-red-500 mr-2" />
-                            <span className="font-medium">Citations Required: 1</span>
+                            <span className="font-medium">Citations Required: {analysisResult.citationIssues.length}</span>
                           </div>
                           <Button size="sm" variant="outline">View All</Button>
                         </div>
                         
-                        <div className="bg-black/40 p-4 rounded-lg mb-4">
-                          <p className="mb-3">Missing citation detected:</p>
-                          <div className="bg-red-500/10 p-3 rounded border border-red-500/30">
-                            <p className="text-sm text-gray-300">
-                              "<span className="text-red-400">This approach was first proposed by Smith et al. in their seminal paper.</span>"
+                        {analysisResult.citationIssues.length > 0 ? (
+                          <div className="space-y-4">
+                            {analysisResult.citationIssues.map((citation) => (
+                              <div key={citation.id} className="bg-black/40 p-4 rounded-lg">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Badge variant="outline" className="text-xs capitalize">
+                                    {citation.type}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="bg-red-500/10 p-3 rounded border border-red-500/30 mb-4">
+                                  <p className="text-sm text-gray-300">
+                                    "<span className="text-red-400">{citation.text}</span>"
+                                  </p>
+                                </div>
+                                
+                                <p className="text-sm text-gray-400 mb-4">{citation.suggestion}</p>
+                                
+                                {citation.suggestedCitation && (
+                                  <div>
+                                    <p className="text-sm font-medium mb-2">Suggested Citation:</p>
+                                    
+                                    <div className="bg-black/60 p-3 rounded border border-gray-800 font-mono text-xs text-gray-300 mb-3">
+                                      \cite{"{citation.suggestedCitation.key}"}
+                                    </div>
+                                    
+                                    <div className="bg-black/60 p-3 rounded border border-gray-800 font-mono text-xs text-gray-400 mb-3">
+                                      {citation.suggestedCitation.bibtex.split('\n').map((line, i) => (
+                                        <div key={i}>{line}</div>
+                                      ))}
+                                    </div>
+                                    
+                                    <div className="flex gap-2">
+                                      <Button size="sm">Add to Bibliography</Button>
+                                      <Button size="sm" variant="outline">Insert Citation</Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+                            <div className="flex items-center">
+                              <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                              <span className="text-green-400 font-medium">Citations look good!</span>
+                            </div>
+                            <p className="text-green-300 text-sm mt-1">
+                              All references appear to be properly cited.
                             </p>
                           </div>
-                          
-                          <div className="mt-4">
-                            <p className="text-sm font-medium mb-2">Suggested Citation:</p>
-                            <div className="bg-black/60 p-3 rounded border border-gray-800 font-mono text-xs text-gray-300 mb-3">
-                              {/* Define the citation key in your bibliography or context */}
-                              \cite{"examplekey"} {/* Ensure Smith2020 is defined in your bibliography */}
-                            </div>
-                            
-                            <div className="bg-black/60 p-3 rounded border border-gray-800 font-mono text-xs text-gray-400">
-                              @article{"examplekey"}<br />
-                              {"  "}author = {"{Smith, J. and Johnson, A. and Williams, R.}"}, {"\n"}
-                              &nbsp;&nbsp;title = {"{Quantum Computing Approaches}"},<br />
-                              &nbsp;&nbsp;journal = {"{Journal of Quantum Computing}"},<br />
-                              &nbsp;&nbsp;volume = {"{42}"},<br />
-                              &nbsp;&nbsp;number = {"{3}"},<br />
-                              &nbsp;&nbsp;pages = {"{215--228}"},<br />
-                              &nbsp;&nbsp;year = {"{2020}"},<br />
-                              &nbsp;&nbsp;publisher = {"{Quantum Publishing Group}"}<br />
-                              {"}"}
-                            </div>
-                            
-                            <div className="mt-3 flex space-x-2">
-                              <Button size="sm">Add to Bibliography</Button>
-                              <Button size="sm" variant="outline">Insert Citation</Button>
-                            </div>
-                          </div>
-                        </div>
+                        )}
                       </>
+                    )}
+                    
+                    {/* Summary Section */}
+                    {analysisResult.summary.improvementSuggestions.length > 0 && (
+                      <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/30 mt-6">
+                        <h5 className="font-medium text-blue-400 mb-2">Improvement Suggestions:</h5>
+                        <ul className="space-y-1">
+                          {analysisResult.summary.improvementSuggestions.map((suggestion, index) => (
+                            <li key={index} className="text-sm text-blue-300 flex items-start">
+                              <span className="text-blue-500 mr-2">•</span>
+                              {suggestion}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 )}
