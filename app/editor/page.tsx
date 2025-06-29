@@ -410,7 +410,7 @@ function EditorPageComponent() {
   // Add this to your state variables  // Set XeLaTeX as default for better Unicode support with the heart symbol
   const [latexEngine, setLatexEngine] = useState<'pdflatex' | 'xelatex' | 'lualatex'>('xelatex');
   // Get backend URL from environment variable (for Vercel/Render deployment)
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://texsync.onrender.com";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
   // Update the compilePdf function to include the engine
   const compilePdf = async () => {
@@ -423,12 +423,21 @@ function EditorPageComponent() {
       // Send the LaTeX content to the backend for compilation
       const response = await fetch(`${BACKEND_URL}/api/compile`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        credentials: 'include',
         body: JSON.stringify({ 
           latex,
           engine: latexEngine  // Add this line to send the engine parameter
         }),
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
       
       const data = await response.json();
       

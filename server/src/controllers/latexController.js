@@ -6,18 +6,24 @@ const path = require('path');
  */
 exports.compileLaTeX = async (req, res) => {
   try {
-    const { latex } = req.body;
+    const { latex, engine = 'pdflatex' } = req.body;
     
     if (!latex) {
       return res.status(400).json({ error: 'LaTeX content is required' });
     }
     
-    const { success, pdfPath, errors } = await latexService.compile(latex);
+    console.log(`Compiling LaTeX with engine: ${engine}`);
+    const { success, pdfPath, errors } = await latexService.compile(latex, engine);
     
     if (success) {
       // Convert absolute path to URL path
       const pdfFileName = path.basename(pdfPath);
-      const pdfUrl = `${req.protocol}://${req.get('host')}/${pdfFileName}`;
+      
+      // Use environment variable or construct URL based on request
+      const baseUrl = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
+      const pdfUrl = `${baseUrl}/pdfs/${pdfFileName}`;
+      
+      console.log(`PDF generated successfully: ${pdfUrl}`);
       
       return res.json({ 
         success: true, 
@@ -25,6 +31,7 @@ exports.compileLaTeX = async (req, res) => {
         message: 'Compilation successful'
       });
     } else {
+      console.log('Compilation failed:', errors);
       return res.json({
         success: false,
         errors,
