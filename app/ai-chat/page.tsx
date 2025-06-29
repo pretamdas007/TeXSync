@@ -238,6 +238,9 @@ export default function AIChatPage() {
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   
+  // Add debugging state
+  const [debugInfo, setDebugInfo] = useState<string>("");
+
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -265,6 +268,50 @@ export default function AIChatPage() {
       averageResponseTime: 0
     });
   }, []);
+  // Test API connection function
+  const testConnection = async () => {
+    setIsLoading(true);
+    setDebugInfo("Testing API connection...");
+    
+    try {
+      console.log("Testing API connection to /api/ai-latex");
+      setDebugInfo("Sending test request to /api/ai-latex...");
+      
+      const response = await fetch("/api/ai-latex", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "Hello, can you respond with a simple test message?",
+          context: "API connection test",
+        }),
+      });
+
+      setDebugInfo(`Response status: ${response.status} ${response.statusText}`);
+      console.log("Response status:", response.status, response.statusText);
+
+      const data = await response.json();
+      console.log("Response data:", data);
+      
+      if (data.success) {
+        toast.success("✅ API connection working! AI responded successfully.");
+        setDebugInfo(`✅ SUCCESS: API working. Response: "${data.response?.substring(0, 100)}..."`);
+      } else {
+        toast.error(`❌ API Error: ${data.error}`);
+        setDebugInfo(`❌ API ERROR: ${data.error} (Code: ${data.code || 'N/A'})`);
+        console.error("API Test Failed:", data);
+      }
+    } catch (error) {
+      toast.error("❌ Connection failed - check console for details");
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setDebugInfo(`❌ CONNECTION ERROR: ${errorMsg}`);
+      console.error("Connection test error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Enhanced utility functions
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -461,16 +508,43 @@ export default function AIChatPage() {
 
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error("Failed to send message. Please try again.");
       
-      const errorMessage: Message = {
+      // Enhanced error handling with specific error messages
+      let errorMessage = "I apologize, but I'm having trouble responding right now.";
+      let debugInfo = "";
+      
+      if (error instanceof Error) {
+        console.log("Error details:", error.message);
+        debugInfo = `Debug info: ${error.message}`;
+        
+        if (error.message.includes("API key")) {
+          errorMessage = "🔑 **API Configuration Issue**\n\nThere's a problem with the API key configuration. The administrator needs to check the GEMINI_API_KEY environment variable.";
+          toast.error("API key configuration error");
+        } else if (error.message.includes("quota") || error.message.includes("rate limit")) {
+          errorMessage = "⏰ **Rate Limit Exceeded**\n\nThe API quota has been exceeded. Please wait a moment before trying again.";
+          toast.error("API rate limit exceeded");
+        } else if (error.message.includes("Network") || error.message.includes("fetch")) {
+          errorMessage = "🌐 **Network Connection Issue**\n\nUnable to connect to the AI service. Please check your internet connection.";
+          toast.error("Network connection error");
+        } else if (error.message.includes("500")) {
+          errorMessage = "🔧 **Server Error**\n\nThe AI service is experiencing issues. Please try again in a few moments.";
+          toast.error("Server error - please try again");
+        } else {
+          errorMessage = "❌ **Unexpected Error**\n\nSomething went wrong. Please try again or contact support if the issue persists.";
+          toast.error("Failed to send message. Please try again.");
+        }
+      } else {
+        toast.error("Unknown error occurred");
+      }
+      
+      const errorResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I apologize, but I'm having trouble responding right now. This might be due to:\n\n• Network connectivity issues\n• API rate limits\n• Server maintenance\n\nPlease try again in a moment. If the problem persists, you can:\n• Refresh the page\n• Check your internet connection\n• Try a shorter message\n• Toggle advanced mode off\n\nI'm here to help as soon as the connection is restored! 🔧",
+        content: `${errorMessage}\n\n**What you can try:**\n• Refresh the page\n• Check your internet connection\n• Try a shorter message\n• Wait a moment and try again\n\n${debugInfo ? `\n*${debugInfo}*` : ""}`,
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorResponse]);
     } finally {
       setIsLoading(false);
     }
@@ -695,6 +769,16 @@ export default function AIChatPage() {
             </div>           
              <div className="flex items-center gap-2">
               <Button
+                variant="outline"
+                size="sm"
+                onClick={testConnection}
+                disabled={isLoading}
+                className="bg-gray-900/80 border-gray-700 text-gray-300 hover:bg-gray-800 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:border-green-600 hover:text-green-400"
+              >
+                <Zap className="h-4 w-4 mr-1" />
+                Test API
+              </Button>
+              <Button
                 variant={isAdvancedMode ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
@@ -794,7 +878,32 @@ export default function AIChatPage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>            {/* Enhanced Search */}
+            </Card>            {/* Debug Panel */}
+            {debugInfo && (
+              <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/30 backdrop-blur-sm border-yellow-700/50 shadow-xl">
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-yellow-200 mb-3 flex items-center gap-2">
+                    <div className="p-1 bg-yellow-600/20 rounded-lg">
+                      <Settings className="h-4 w-4 text-yellow-500" />
+                    </div>
+                    Debug Info
+                  </h3>
+                  <div className="text-xs text-yellow-300 bg-yellow-950/30 p-3 rounded-lg border border-yellow-800/30 font-mono">
+                    {debugInfo}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDebugInfo("")}
+                    className="mt-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-800/20"
+                  >
+                    Clear Debug
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Enhanced Search */}
             <Card className="bg-gradient-to-br from-gray-900/90 to-gray-800/80 backdrop-blur-sm border-gray-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:border-gray-600/50">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
