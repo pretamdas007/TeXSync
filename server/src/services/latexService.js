@@ -41,11 +41,27 @@ exports.compile = async (latexContent, engine = 'pdflatex') => {
     console.log(`LaTeX file written to ${texFilePath}`);
     console.log(`Using compiler engine: ${engine}`);
     
+    // Check if LaTeX engine is available
+    try {
+      await execPromise(`which ${engine}`);
+    } catch (error) {
+      console.error(`LaTeX engine ${engine} not found`);
+      return {
+        success: false,
+        errors: `LaTeX engine "${engine}" is not installed on this system. Available engines may include: pdflatex, xelatex, lualatex. Please check server configuration.`
+      };
+    }
+    
     // Run LaTeX compiler with the specified engine
     const command = `${engine} -interaction=nonstopmode -output-directory="${tempDir}" "${texFilePath}"`;
+    console.log(`Executing command: ${command}`);
+    
     const { stdout, stderr } = await execPromise(command);
     
     console.log(`${engine} output:`, stdout);
+    if (stderr) {
+      console.log(`${engine} stderr:`, stderr);
+    }
     
     const pdfPath = `${baseOutputPath}.pdf`;
     const logPath = `${baseOutputPath}.log`;

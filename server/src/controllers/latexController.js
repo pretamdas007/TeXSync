@@ -1,5 +1,8 @@
 const latexService = require('../services/latexService');
 const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 /**
  * Handle LaTeX compilation requests
@@ -66,6 +69,46 @@ exports.generateAILatex = async (req, res) => {
     return res.json({ success: true, latex });
   } catch (error) {
     console.error('Error generating LaTeX:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Check LaTeX engine availability
+ */
+exports.checkLatexEngines = async (req, res) => {
+  try {
+    const engines = ['pdflatex', 'xelatex', 'lualatex'];
+    const availability = {};
+    
+    for (const engine of engines) {
+      try {
+        await execPromise(`which ${engine}`);
+        // Try to get version
+        const { stdout } = await execPromise(`${engine} --version`);
+        availability[engine] = {
+          available: true,
+          version: stdout.split('\n')[0]
+        };
+      } catch (error) {
+        availability[engine] = {
+          available: false,
+          error: error.message
+        };
+      }
+    }
+    
+    return res.json({ 
+      success: true, 
+      engines: availability,
+      systemInfo: {
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version
+      }
+    });
+  } catch (error) {
+    console.error('Error checking LaTeX engines:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };
